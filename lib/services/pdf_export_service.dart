@@ -47,10 +47,16 @@ class PdfExportService {
     return image;
   }
 
+  /// The default page format when the caller (or the print dialog) doesn't
+  /// request a specific one: A4 landscape, since the bracket tree is much
+  /// wider than it is tall and reads far better across the page.
+  static final PdfPageFormat defaultPageFormat = PdfPageFormat.a4.landscape;
+
   static Future<pw.Document> buildBracketDocument(
     WeightGroupDraw draw, {
     String? tournamentName,
     DateTime? tournamentDate,
+    PdfPageFormat? pageFormat,
   }) async {
     final font = await _loadFont();
     final fontBold = await _loadFontBold();
@@ -61,7 +67,7 @@ class PdfExportService {
 
     doc.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
+        pageFormat: pageFormat ?? defaultPageFormat,
         margin: const pw.EdgeInsets.fromLTRB(28, 24, 28, 24),
         build: (context) {
           return pw.Column(

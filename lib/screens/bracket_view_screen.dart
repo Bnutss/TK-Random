@@ -38,13 +38,22 @@ class BracketViewScreen extends StatelessWidget {
         title: Text(draw.key.label),
         commandBar: FilledButton(
           onPressed: () async {
-            final doc = await PdfExportService.buildBracketDocument(
-              draw,
-              tournamentName: tournamentName,
-              tournamentDate: tournamentDate,
-            );
+            // `format` reflects whatever paper size/orientation the print
+            // dialog is currently set to — rebuilding on every call (rather
+            // than reusing one fixed document) is what lets the built-in
+            // picker actually change the output, including switching back
+            // to portrait if that's ever preferred for a given printer.
             await Printing.layoutPdf(
-              onLayout: (format) => doc.save(),
+              format: PdfExportService.defaultPageFormat,
+              onLayout: (format) async {
+                final doc = await PdfExportService.buildBracketDocument(
+                  draw,
+                  tournamentName: tournamentName,
+                  tournamentDate: tournamentDate,
+                  pageFormat: format,
+                );
+                return doc.save();
+              },
               name: draw.key.label,
             );
           },
