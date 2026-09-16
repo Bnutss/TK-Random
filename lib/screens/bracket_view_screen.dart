@@ -22,6 +22,19 @@ class BracketViewScreen extends StatelessWidget {
     final theme = FluentTheme.of(context);
     return ScaffoldPage(
       header: PageHeader(
+        // This screen is pushed as its own route on top of HomeShell's
+        // NavigationView, so the side pane and its hamburger toggle aren't
+        // part of this page at all — without an explicit way back, the
+        // only way out is to restart the app. PaneBackButton doesn't work
+        // here (it requires a NavigationView ancestor, which this route
+        // doesn't have), so this is a plain back button tied to the pop
+        // that got us here.
+        leading: IconButton(
+          icon: const Icon(FluentIcons.back),
+          onPressed: Navigator.of(context).canPop()
+              ? () => Navigator.of(context).pop()
+              : null,
+        ),
         title: Text(draw.key.label),
         commandBar: FilledButton(
           onPressed: () async {

@@ -39,7 +39,7 @@ jobs:
       # at. Plain pushes to main just build and test, no release.
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: tk_random-windows.zip
           generate_release_notes: true
