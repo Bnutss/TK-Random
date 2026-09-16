@@ -41,5 +41,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
-          files: tk_random-windows.zip
+          files: ./tk_random-windows.zip
+          fail_on_unmatched_files: true
           generate_release_notes: true
