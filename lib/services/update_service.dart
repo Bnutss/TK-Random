@@ -1,14 +1,30 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// A published version newer than the one currently running.
 class UpdateInfo {
   final String version;
   final String releaseUrl;
 
-  const UpdateInfo({required this.version, required this.releaseUrl});
+  /// Direct link to the built zip attached to the release, or null if the
+  /// release has no asset yet (e.g. it's still being uploaded, or was
+  /// created by hand without one) — callers should fall back to
+  /// [releaseUrl] in that case.
+  final String? downloadUrl;
+  final String? assetName;
+  final int? assetSize;
+
+  const UpdateInfo({
+    required this.version,
+    required this.releaseUrl,
+    this.downloadUrl,
+    this.assetName,
+    this.assetSize,
+  });
 }
 
 class UpdateService {
@@ -39,11 +55,69 @@ class UpdateService {
 
       final latestVersion = tag.startsWith('v') ? tag.substring(1) : tag;
       final currentVersion = (await PackageInfo.fromPlatform()).version;
-
       if (!isNewerVersion(latestVersion, currentVersion)) return null;
-      return UpdateInfo(version: latestVersion, releaseUrl: releaseUrl);
+
+      final assets = json['assets'] as List?;
+      final asset = (assets != null && assets.isNotEmpty)
+          ? assets.first as Map<String, dynamic>
+          : null;
+
+      return UpdateInfo(
+        version: latestVersion,
+        releaseUrl: releaseUrl,
+        downloadUrl: asset?['browser_download_url'] as String?,
+        assetName: asset?['name'] as String?,
+        assetSize: asset?['size'] as int?,
+      );
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Downloads [update]'s asset to the user's Downloads folder (falling
+  /// back to the app's own data folder if that isn't available), streaming
+  /// so [onProgress] can report `(bytesReceived, totalBytes)` — `totalBytes`
+  /// is 0 if the server doesn't report a length. Throws on any failure
+  /// (network error, non-200 response, no [UpdateInfo.downloadUrl]); the
+  /// caller decides how to surface that.
+  static Future<File> downloadUpdate(
+    UpdateInfo update, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final url = update.downloadUrl;
+    if (url == null) {
+      throw StateError('This release has no downloadable asset');
+    }
+
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(url));
+      final streamed = await client.send(request);
+      if (streamed.statusCode != 200) {
+        throw HttpException(
+          'Download failed with status ${streamed.statusCode}',
+        );
+      }
+      final total = streamed.contentLength ?? update.assetSize ?? 0;
+
+      final dir =
+          await getDownloadsDirectory() ??
+          await getApplicationSupportDirectory();
+      final fileName = update.assetName ?? 'tk_random-windows.zip';
+      final file = File('${dir.path}/$fileName');
+
+      final sink = file.openWrite();
+      var received = 0;
+      await for (final chunk in streamed.stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        onProgress?.call(received, total);
+      }
+      await sink.close();
+
+      return file;
+    } finally {
+      client.close();
     }
   }
 }

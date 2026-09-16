@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,12 +22,21 @@ class HomeShell extends StatefulWidget {
   /// GitHub Releases check; tests override it to avoid real network calls.
   final Future<UpdateInfo?> Function() checkForUpdate;
 
+  /// Downloads an update's asset. Defaults to the real implementation;
+  /// tests override it to avoid real network/file I/O.
+  final Future<File> Function(
+    UpdateInfo update, {
+    void Function(int received, int total)? onProgress,
+  })
+  downloadUpdate;
+
   const HomeShell({
     super.key,
     required this.athleteRepository,
     required this.categoryRepository,
     required this.tournamentRepository,
     this.checkForUpdate = UpdateService.checkForUpdate,
+    this.downloadUpdate = UpdateService.downloadUpdate,
   });
 
   @override
@@ -43,28 +55,139 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _checkForUpdate() async {
     final update = await widget.checkForUpdate();
     if (update == null || !mounted) return;
-    await showDialog<void>(
+
+    final shouldDownload = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Доступно обновление'),
+        content: Text('Вышла версия ${update.version}. Скачать её сейчас?'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Позже'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Скачать'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDownload != true || !mounted) return;
+
+    if (update.downloadUrl == null) {
+      // The release has no attached asset yet — the browser is the only way.
+      await launchUrl(
+        Uri.parse(update.releaseUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+    await _downloadUpdate(update);
+  }
+
+  Future<void> _downloadUpdate(UpdateInfo update) async {
+    final progress = ValueNotifier<double?>(0);
+
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ContentDialog(
+          title: const Text('Загрузка обновления'),
+          content: ValueListenableBuilder<double?>(
+            valueListenable: progress,
+            builder: (context, value, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProgressBar(value: value == null ? null : value * 100),
+                const SizedBox(height: 10),
+                Text(
+                  value == null
+                      ? 'Подключение…'
+                      : '${(value * 100).toStringAsFixed(0)}%',
+                  style: FluentTheme.of(context).typography.caption,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    File? file;
+    Object? error;
+    try {
+      file = await widget.downloadUpdate(
+        update,
+        onProgress: (received, total) {
+          progress.value = total > 0 ? received / total : null;
+        },
+      );
+    } catch (e) {
+      error = e;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop(); // close the progress dialog
+
+    if (file == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => ContentDialog(
+          title: const Text('Не удалось скачать'),
+          content: Text(
+            'Попробуйте открыть страницу релиза в браузере и скачать '
+            'вручную.\n\n$error',
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Закрыть'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                launchUrl(
+                  Uri.parse(update.releaseUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              child: const Text('Открыть страницу релиза'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Обновление скачано'),
         content: Text(
-          'Вышла версия ${update.version}. Скачайте и установите её поверх '
-          'текущей — данные (участники, категории, история) сохранятся.',
+          'Файл сохранён:\n${file!.path}\n\n'
+          'Распакуйте его поверх текущей папки установки — данные '
+          '(участники, категории, история) сохранятся.',
         ),
         actions: [
           Button(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Позже'),
+            child: const Text('Закрыть'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.of(context).pop();
-              launchUrl(
-                Uri.parse(update.releaseUrl),
-                mode: LaunchMode.externalApplication,
+              unawaited(
+                Process.run('explorer.exe', [
+                  '/select,',
+                  file!.path,
+                ]).catchError((_) => ProcessResult(0, 0, '', '')),
               );
             },
-            child: const Text('Скачать'),
+            child: const Text('Открыть папку'),
           ),
         ],
       ),
