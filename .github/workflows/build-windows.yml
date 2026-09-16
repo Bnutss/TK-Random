@@ -3,7 +3,11 @@ name: Build Windows
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -28,3 +32,14 @@ jobs:
         with:
           name: tk_random-windows
           path: tk_random-windows.zip
+
+      # Only for version-tag pushes (v1.2.3): publishes a public GitHub
+      # Release with the zip attached, so the app's in-app update check
+      # (lib/services/update_service.dart) has a stable URL to point users
+      # at. Plain pushes to main just build and test, no release.
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tk_random-windows.zip
+          generate_release_notes: true

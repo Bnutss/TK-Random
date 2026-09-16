@@ -1,8 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/athlete_repository.dart';
 import '../services/category_repository.dart';
 import '../services/tournament_repository.dart';
+import '../services/update_service.dart';
 import 'athletes_screen.dart';
 import 'categories_screen.dart';
 import 'draw_screen.dart';
@@ -13,11 +15,16 @@ class HomeShell extends StatefulWidget {
   final CategoryRepository categoryRepository;
   final TournamentRepository tournamentRepository;
 
+  /// Checks whether a newer version is published. Defaults to a real
+  /// GitHub Releases check; tests override it to avoid real network calls.
+  final Future<UpdateInfo?> Function() checkForUpdate;
+
   const HomeShell({
     super.key,
     required this.athleteRepository,
     required this.categoryRepository,
     required this.tournamentRepository,
+    this.checkForUpdate = UpdateService.checkForUpdate,
   });
 
   @override
@@ -26,6 +33,43 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
+  }
+
+  Future<void> _checkForUpdate() async {
+    final update = await widget.checkForUpdate();
+    if (update == null || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Доступно обновление'),
+        content: Text(
+          'Вышла версия ${update.version}. Скачайте и установите её поверх '
+          'текущей — данные (участники, категории, история) сохранятся.',
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Позже'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              launchUrl(
+                Uri.parse(update.releaseUrl),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: const Text('Скачать'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

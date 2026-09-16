@@ -16,6 +16,7 @@ void main() {
       athleteRepository: AthleteRepository(),
       categoryRepository: CategoryRepository.seeded(defaultAgeCategories()),
       tournamentRepository: TournamentRepository(),
+      checkForUpdate: () async => null,
     ),
   );
 
