@@ -44,7 +44,8 @@ class BracketTreeView extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    for (final match in draw.rounds[r]) _MatchCard(match: match),
+                    for (final match in draw.rounds[r])
+                      _MatchCard(match: match),
                   ],
                 ),
               ),
@@ -107,7 +108,9 @@ class _SlotLine extends StatelessWidget {
     }
     return Text(
       'ожидается',
-      style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorTertiary),
+      style: theme.typography.caption?.copyWith(
+        color: theme.resources.textFillColorTertiary,
+      ),
     );
   }
 }

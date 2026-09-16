@@ -1,6 +1,4 @@
-import 'age_category.dart';
 import 'gender.dart';
-import 'weight_class.dart';
 
 class Athlete {
   final String id;
@@ -18,14 +16,6 @@ class Athlete {
     required this.weightKg,
     this.club = '',
   });
-
-  AgeCategory? get ageCategory => resolveAgeCategory(birthYear);
-
-  WeightClass? get weightClass {
-    final category = ageCategory;
-    if (category == null) return null;
-    return WeightClassTables.resolve(category, gender, weightKg);
-  }
 
   Athlete copyWith({
     String? fullName,

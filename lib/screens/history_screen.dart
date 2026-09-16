@@ -9,7 +9,10 @@ class HistoryScreen extends StatelessWidget {
 
   const HistoryScreen({super.key, required this.repository});
 
-  Future<void> _confirmDelete(BuildContext context, Tournament tournament) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    Tournament tournament,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
@@ -52,7 +55,8 @@ class HistoryScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final tournament = tournaments[index];
               final date = tournament.date;
-              final dateLabel = '${date.day.toString().padLeft(2, '0')}.'
+              final dateLabel =
+                  '${date.day.toString().padLeft(2, '0')}.'
                   '${date.month.toString().padLeft(2, '0')}.${date.year}';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -122,7 +126,9 @@ class _DrawListTile extends StatelessWidget {
           Expanded(
             child: Text(
               draw.key.label,
-              style: theme.typography.body?.copyWith(color: theme.resources.textFillColorPrimary),
+              style: theme.typography.body?.copyWith(
+                color: theme.resources.textFillColorPrimary,
+              ),
             ),
           ),
           Text(

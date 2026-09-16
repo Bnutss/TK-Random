@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/age_category.dart';
 import '../models/athlete.dart';
 import '../models/bracket.dart';
 import '../models/gender.dart';
@@ -84,14 +85,24 @@ class AthleteRepository extends ChangeNotifier {
 
   /// Groups athletes that have a resolvable category and weight class,
   /// sorted by group key. Athletes with an unresolved category are omitted.
-  Map<GroupKey, List<Athlete>> groupForDraw() {
+  Map<GroupKey, List<Athlete>> groupForDraw(List<AgeCategoryDef> categories) {
     final groups = <GroupKey, List<Athlete>>{};
     for (final athlete in _athletes) {
-      final category = athlete.ageCategory;
-      final weightClass = athlete.weightClass;
-      if (category == null || weightClass == null) continue;
+      final categoryIndex = categories.indexWhere(
+        (c) => c.matches(athlete.birthYear),
+      );
+      if (categoryIndex == -1) continue;
+      final category = categories[categoryIndex];
+      final weightClass = category.resolveWeightClass(
+        athlete.gender,
+        athlete.weightKg,
+      );
+      if (weightClass == null) continue;
       final key = GroupKey(
-        ageCategory: category,
+        ageCategoryId: category.id,
+        ageCategoryLabel: category.label,
+        ageCategoryYearRangeLabel: category.yearRangeLabel,
+        ageCategoryOrder: categoryIndex,
         gender: athlete.gender,
         weightClass: weightClass,
       );
@@ -101,6 +112,15 @@ class AthleteRepository extends ChangeNotifier {
     return {for (final k in sortedKeys) k: groups[k]!};
   }
 
-  List<Athlete> withUnresolvedCategory() =>
-      _athletes.where((a) => a.ageCategory == null).toList();
+  /// Athletes whose birth year matches no category, or whose matched
+  /// category has no weight-class boundaries configured for their gender.
+  List<Athlete> withUnresolvedCategory(List<AgeCategoryDef> categories) =>
+      _athletes.where((a) {
+        final category = categories.cast<AgeCategoryDef?>().firstWhere(
+          (c) => c!.matches(a.birthYear),
+          orElse: () => null,
+        );
+        if (category == null) return true;
+        return category.resolveWeightClass(a.gender, a.weightKg) == null;
+      }).toList();
 }

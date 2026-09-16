@@ -42,7 +42,9 @@ class BracketViewScreen extends StatelessWidget {
               children: [
                 Icon(FluentIcons.print, size: 15),
                 SizedBox(width: 8),
-                Text('Печать / PDF'),
+                Flexible(
+                  child: Text('Печать / PDF', overflow: TextOverflow.ellipsis),
+                ),
               ],
             ),
           ),
@@ -55,7 +57,7 @@ class BracketViewScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Text(
               'Участников: ${draw.participants.length} · '
-              '${draw.key.ageCategory.label} · ${draw.key.gender.label} · '
+              '${draw.key.ageCategoryLabel} · ${draw.key.gender.label} · '
               'до ${draw.key.weightClass.label} кг',
               style: theme.typography.body,
             ),

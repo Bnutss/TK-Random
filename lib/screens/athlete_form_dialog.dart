@@ -4,14 +4,14 @@ import 'package:flutter/services.dart' show TextCapitalization;
 import '../models/age_category.dart';
 import '../models/athlete.dart';
 import '../models/gender.dart';
-import '../models/weight_class.dart';
 
 /// Add/edit dialog for one athlete. Returns the entered data via the
 /// dialog's [Navigator.pop] result, or null if cancelled.
 class AthleteFormDialog extends StatefulWidget {
   final Athlete? existing;
+  final List<AgeCategoryDef> categories;
 
-  const AthleteFormDialog({super.key, this.existing});
+  const AthleteFormDialog({super.key, this.existing, required this.categories});
 
   @override
   State<AthleteFormDialog> createState() => _AthleteFormDialogState();
@@ -63,14 +63,18 @@ class _AthleteFormDialogState extends State<AthleteFormDialog> {
   Widget build(BuildContext context) {
     final year = _parsedYear;
     final weight = _parsedWeight;
-    final category = year != null ? resolveAgeCategory(year) : null;
+    final category = year != null
+        ? resolveAgeCategoryFrom(widget.categories, year)
+        : null;
     final weightClass = (category != null && weight != null)
-        ? WeightClassTables.resolve(category, _gender, weight)
+        ? category.resolveWeightClass(_gender, weight)
         : null;
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 460),
-      title: Text(widget.existing == null ? 'Новый участник' : 'Изменить участника'),
+      title: Text(
+        widget.existing == null ? 'Новый участник' : 'Изменить участника',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -121,10 +125,14 @@ class _AthleteFormDialogState extends State<AthleteFormDialog> {
                         key: const Key('athlete_weight_field'),
                         controller: _weightController,
                         placeholder: '45.5',
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         onChanged: (_) => setState(() {}),
                         validator: (v) {
-                          final w = double.tryParse((v ?? '').trim().replaceAll(',', '.'));
+                          final w = double.tryParse(
+                            (v ?? '').trim().replaceAll(',', '.'),
+                          );
                           if (w == null || w <= 0) return 'Число';
                           return null;
                         },

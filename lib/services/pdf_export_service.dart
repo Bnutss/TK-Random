@@ -72,7 +72,11 @@ class PdfExportService {
               _buildInfoGrid(draw, fontBold, tournamentDate),
               pw.SizedBox(height: 16),
               pw.Expanded(
-                child: _BracketPainter(draw: draw, font: font, fontBold: fontBold),
+                child: _BracketPainter(
+                  draw: draw,
+                  font: font,
+                  fontBold: fontBold,
+                ),
               ),
               pw.SizedBox(height: 10),
               _buildFooter(draw, font),
@@ -137,8 +141,8 @@ class PdfExportService {
         ? DateFormat('dd.MM.yyyy').format(tournamentDate)
         : '—';
     final cells = [
-      ('Категория', key.ageCategory.label),
-      ('Годы рождения', key.ageCategory.yearRangeLabel),
+      ('Категория', key.ageCategoryLabel),
+      ('Годы рождения', key.ageCategoryYearRangeLabel),
       ('Пол', key.gender.label == 'М' ? 'Мужской' : 'Женский'),
       ('Весовая категория', 'до ${key.weightClass.label} кг'),
       ('Дата', dateLabel),
@@ -154,7 +158,10 @@ class PdfExportService {
           for (var i = 0; i < cells.length; i++)
             pw.Expanded(
               child: pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: i == cells.length - 1
                     ? null
                     : pw.BoxDecoration(
@@ -202,7 +209,10 @@ class PdfExportService {
   static pw.Widget _signatureLine(String label) {
     return pw.Row(
       children: [
-        pw.Text('$label: ', style: const pw.TextStyle(fontSize: 9, color: _mutedColor)),
+        pw.Text(
+          '$label: ',
+          style: const pw.TextStyle(fontSize: 9, color: _mutedColor),
+        ),
         pw.Container(width: 140, height: 0.7, color: _lineColor),
       ],
     );
@@ -221,7 +231,11 @@ class _BracketPainter extends pw.StatelessWidget {
   static const _roundGap = 42.0;
   static const _rowHeight = 40.0;
 
-  _BracketPainter({required this.draw, required this.font, required this.fontBold});
+  _BracketPainter({
+    required this.draw,
+    required this.font,
+    required this.fontBold,
+  });
 
   @override
   pw.Widget build(pw.Context context) {
@@ -237,7 +251,10 @@ class _BracketPainter extends pw.StatelessWidget {
         final availableHeight = constraints.maxHeight;
         final scale = math.min(
           1.0,
-          math.min(availableWidth / naturalWidth, availableHeight / naturalHeight),
+          math.min(
+            availableWidth / naturalWidth,
+            availableHeight / naturalHeight,
+          ),
         );
 
         final cardWidth = _cardWidth * scale;
@@ -320,14 +337,20 @@ class _BracketPainter extends pw.StatelessWidget {
       left: math.min(x1, x2),
       top: math.min(y1, y2),
       child: pw.CustomPaint(
-        size: PdfPoint((x2 - x1).abs().clamp(0.01, double.infinity),
-            (y2 - y1).abs().clamp(0.01, double.infinity)),
+        size: PdfPoint(
+          (x2 - x1).abs().clamp(0.01, double.infinity),
+          (y2 - y1).abs().clamp(0.01, double.infinity),
+        ),
         painter: (canvas, size) {
           canvas
             ..setStrokeColor(_lineColor)
             ..setLineWidth(0.9)
-            ..drawLine(x1 < x2 ? 0 : size.x, y1 < y2 ? 0 : size.y,
-                x1 < x2 ? size.x : 0, y1 < y2 ? size.y : 0)
+            ..drawLine(
+              x1 < x2 ? 0 : size.x,
+              y1 < y2 ? 0 : size.y,
+              x1 < x2 ? size.x : 0,
+              y1 < y2 ? size.y : 0,
+            )
             ..strokePath();
         },
       ),
@@ -355,15 +378,34 @@ class _BracketPainter extends pw.StatelessWidget {
         mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-          _slotLine(match.slotA, fontSize, numberFontSize, numbered ? baseIndex : null),
-          pw.Container(height: 0.6, color: _lineColor, margin: const pw.EdgeInsets.symmetric(horizontal: 6)),
-          _slotLine(match.slotB, fontSize, numberFontSize, numbered ? baseIndex + 1 : null),
+          _slotLine(
+            match.slotA,
+            fontSize,
+            numberFontSize,
+            numbered ? baseIndex : null,
+          ),
+          pw.Container(
+            height: 0.6,
+            color: _lineColor,
+            margin: const pw.EdgeInsets.symmetric(horizontal: 6),
+          ),
+          _slotLine(
+            match.slotB,
+            fontSize,
+            numberFontSize,
+            numbered ? baseIndex + 1 : null,
+          ),
         ],
       ),
     );
   }
 
-  pw.Widget _slotLine(BracketSlot slot, double fontSize, double numberFontSize, int? number) {
+  pw.Widget _slotLine(
+    BracketSlot slot,
+    double fontSize,
+    double numberFontSize,
+    int? number,
+  ) {
     String label;
     PdfColor color = PdfColors.black;
     if (slot.athlete != null) {
@@ -384,7 +426,10 @@ class _BracketPainter extends pw.StatelessWidget {
               width: 12,
               child: pw.Text(
                 '$number',
-                style: pw.TextStyle(fontSize: numberFontSize, color: _mutedColor),
+                style: pw.TextStyle(
+                  fontSize: numberFontSize,
+                  color: _mutedColor,
+                ),
               ),
             ),
           ],

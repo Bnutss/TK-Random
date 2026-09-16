@@ -4,16 +4,19 @@ import '../models/athlete.dart';
 import '../models/bracket.dart';
 import '../services/athlete_repository.dart';
 import '../services/bracket_generator.dart';
+import '../services/category_repository.dart';
 import '../services/tournament_repository.dart';
 import 'bracket_view_screen.dart';
 
 class DrawScreen extends StatefulWidget {
   final AthleteRepository athleteRepository;
+  final CategoryRepository categoryRepository;
   final TournamentRepository tournamentRepository;
 
   const DrawScreen({
     super.key,
     required this.athleteRepository,
+    required this.categoryRepository,
     required this.tournamentRepository,
   });
 
@@ -71,10 +74,16 @@ class _DrawScreenState extends State<DrawScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.athleteRepository,
+      listenable: Listenable.merge([
+        widget.athleteRepository,
+        widget.categoryRepository,
+      ]),
       builder: (context, _) {
-        final groups = widget.athleteRepository.groupForDraw();
-        final unresolved = widget.athleteRepository.withUnresolvedCategory();
+        final categories = widget.categoryRepository.categories;
+        final groups = widget.athleteRepository.groupForDraw(categories);
+        final unresolved = widget.athleteRepository.withUnresolvedCategory(
+          categories,
+        );
         final eligibleCount = groups.values.where((v) => v.length >= 2).length;
 
         return ScaffoldPage(
@@ -87,7 +96,9 @@ class _DrawScreenState extends State<DrawScreen> {
               runSpacing: 8,
               children: [
                 Button(
-                  onPressed: eligibleCount == 0 ? null : () => _generateAll(groups),
+                  onPressed: eligibleCount == 0
+                      ? null
+                      : () => _generateAll(groups),
                   child: const Padding(
                     padding: EdgeInsetsDirectional.symmetric(horizontal: 4),
                     child: Row(
@@ -95,7 +106,12 @@ class _DrawScreenState extends State<DrawScreen> {
                       children: [
                         Icon(FluentIcons.branch_fork2, size: 15),
                         SizedBox(width: 8),
-                        Text('Сформировать все сетки'),
+                        Flexible(
+                          child: Text(
+                            'Сформировать все сетки',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -109,7 +125,12 @@ class _DrawScreenState extends State<DrawScreen> {
                       children: [
                         Icon(FluentIcons.save, size: 15),
                         SizedBox(width: 8),
-                        Text('Сохранить в историю'),
+                        Flexible(
+                          child: Text(
+                            'Сохранить в историю',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -118,7 +139,9 @@ class _DrawScreenState extends State<DrawScreen> {
             ),
           ),
           content: groups.isEmpty
-              ? const Center(child: Text('Нет участников с определённой категорией'))
+              ? const Center(
+                  child: Text('Нет участников с определённой категорией'),
+                )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
@@ -127,7 +150,9 @@ class _DrawScreenState extends State<DrawScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: InfoBar(
                           title: const Text('Категория не определена'),
-                          content: Text(unresolved.map((a) => a.fullName).join(', ')),
+                          content: Text(
+                            unresolved.map((a) => a.fullName).join(', '),
+                          ),
                           severity: InfoBarSeverity.warning,
                         ),
                       ),
@@ -135,6 +160,7 @@ class _DrawScreenState extends State<DrawScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _GroupExpander(
+                          groupKey: entry.key,
                           athletes: entry.value,
                           draw: _draws[entry.key],
                           onGenerate: entry.value.length >= 2
@@ -160,12 +186,14 @@ class _DrawScreenState extends State<DrawScreen> {
 }
 
 class _GroupExpander extends StatelessWidget {
+  final GroupKey groupKey;
   final List<Athlete> athletes;
   final WeightGroupDraw? draw;
   final VoidCallback? onGenerate;
   final VoidCallback? onOpen;
 
   const _GroupExpander({
+    required this.groupKey,
     required this.athletes,
     required this.draw,
     required this.onGenerate,
@@ -175,10 +203,7 @@ class _GroupExpander extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final key = draw?.key;
-    final first = athletes.first;
-    final label = key?.label ??
-        '${first.ageCategory!.label} · ${first.gender.label} · до ${first.weightClass!.label} кг';
+    final label = groupKey.label;
 
     return Card(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -200,7 +225,7 @@ class _GroupExpander extends StatelessWidget {
                   athletes.length < 2
                       ? 'Нет соперников (${athletes.length})'
                       : '${athletes.length} участников'
-                        '${draw != null ? ' · сетка сформирована' : ''}',
+                            '${draw != null ? ' · сетка сформирована' : ''}',
                   style: theme.typography.caption,
                 ),
               ],

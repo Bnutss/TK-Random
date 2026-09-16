@@ -1,26 +1,36 @@
-import 'age_category.dart';
 import 'athlete.dart';
 import 'gender.dart';
 import 'weight_class.dart';
 
 /// Identifies one (age category × gender × weight class) drawing group.
+///
+/// The age category fields are a *snapshot* (id, label, year-range label,
+/// list order) taken at grouping time rather than a live reference, so a
+/// draw generated or saved earlier keeps reading correctly even if the
+/// category is later renamed, reordered or deleted in category management.
 class GroupKey implements Comparable<GroupKey> {
-  final AgeCategory ageCategory;
+  final String ageCategoryId;
+  final String ageCategoryLabel;
+  final String ageCategoryYearRangeLabel;
+  final int ageCategoryOrder;
   final Gender gender;
   final WeightClass weightClass;
 
   const GroupKey({
-    required this.ageCategory,
+    required this.ageCategoryId,
+    required this.ageCategoryLabel,
+    required this.ageCategoryYearRangeLabel,
+    required this.ageCategoryOrder,
     required this.gender,
     required this.weightClass,
   });
 
   String get label =>
-      '${ageCategory.label} · ${gender.label} · до ${weightClass.label} кг';
+      '$ageCategoryLabel · ${gender.label} · до ${weightClass.label} кг';
 
   @override
   int compareTo(GroupKey other) {
-    final byCategory = ageCategory.index.compareTo(other.ageCategory.index);
+    final byCategory = ageCategoryOrder.compareTo(other.ageCategoryOrder);
     if (byCategory != 0) return byCategory;
     final byGender = gender.index.compareTo(other.gender.index);
     if (byGender != 0) return byGender;
@@ -30,28 +40,61 @@ class GroupKey implements Comparable<GroupKey> {
   @override
   bool operator ==(Object other) =>
       other is GroupKey &&
-      other.ageCategory == ageCategory &&
+      other.ageCategoryId == ageCategoryId &&
       other.gender == gender &&
       other.weightClass == weightClass;
 
   @override
-  int get hashCode => Object.hash(ageCategory, gender, weightClass);
+  int get hashCode => Object.hash(ageCategoryId, gender, weightClass);
 
   Map<String, dynamic> toJson() => {
-    'ageCategory': ageCategory.name,
+    'ageCategoryId': ageCategoryId,
+    'ageCategoryLabel': ageCategoryLabel,
+    'ageCategoryYearRangeLabel': ageCategoryYearRangeLabel,
+    'ageCategoryOrder': ageCategoryOrder,
     'gender': gender.code,
     'weightBase': weightClass.baseValue,
     'weightOpen': weightClass.isOpenTop,
   };
 
-  factory GroupKey.fromJson(Map<String, dynamic> json) => GroupKey(
-    ageCategory: AgeCategory.values.byName(json['ageCategory'] as String),
-    gender: Gender.fromCode(json['gender'] as String),
-    weightClass: WeightClass(
-      baseValue: (json['weightBase'] as num).toDouble(),
-      isOpenTop: json['weightOpen'] as bool,
-    ),
-  );
+  /// Legacy labels for the fixed categories that predate category
+  /// management, used to backfill history saved before this JSON shape
+  /// existed (it only stored the enum name under `ageCategory`).
+  static const _legacyLabels = {
+    'adult': ('Взрослый', '2009 и старше', 0),
+    'junior': ('Юниор', '2010–2012', 1),
+    'cadet': ('Кадет', '2013–2015', 2),
+    'childChallenger': ('Дети челленджер', '2016–2017', 3),
+  };
+
+  factory GroupKey.fromJson(Map<String, dynamic> json) {
+    final legacyId = json['ageCategory'] as String?;
+    if (legacyId != null) {
+      final legacy = _legacyLabels[legacyId];
+      return GroupKey(
+        ageCategoryId: legacyId,
+        ageCategoryLabel: legacy?.$1 ?? legacyId,
+        ageCategoryYearRangeLabel: legacy?.$2 ?? '',
+        ageCategoryOrder: legacy?.$3 ?? 0,
+        gender: Gender.fromCode(json['gender'] as String),
+        weightClass: WeightClass(
+          baseValue: (json['weightBase'] as num).toDouble(),
+          isOpenTop: json['weightOpen'] as bool,
+        ),
+      );
+    }
+    return GroupKey(
+      ageCategoryId: json['ageCategoryId'] as String,
+      ageCategoryLabel: json['ageCategoryLabel'] as String,
+      ageCategoryYearRangeLabel: json['ageCategoryYearRangeLabel'] as String,
+      ageCategoryOrder: json['ageCategoryOrder'] as int,
+      gender: Gender.fromCode(json['gender'] as String),
+      weightClass: WeightClass(
+        baseValue: (json['weightBase'] as num).toDouble(),
+        isOpenTop: json['weightOpen'] as bool,
+      ),
+    );
+  }
 }
 
 /// One position in a bracket match: either a drawn athlete, a bye (the

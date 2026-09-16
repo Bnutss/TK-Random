@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tk_random/models/age_category.dart';
 import 'package:tk_random/models/athlete.dart';
 import 'package:tk_random/models/bracket.dart';
 import 'package:tk_random/models/gender.dart';
@@ -20,7 +19,10 @@ List<Athlete> _athletes(int n) => List.generate(
 );
 
 final _key = GroupKey(
-  ageCategory: AgeCategory.junior,
+  ageCategoryId: 'junior',
+  ageCategoryLabel: 'Юниор',
+  ageCategoryYearRangeLabel: '2010–2012',
+  ageCategoryOrder: 1,
   gender: Gender.male,
   weightClass: const WeightClass(baseValue: 51, isOpenTop: false),
 );

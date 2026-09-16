@@ -1,13 +1,20 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../models/age_category.dart';
 import '../models/athlete.dart';
 import '../services/athlete_repository.dart';
+import '../services/category_repository.dart';
 import 'athlete_form_dialog.dart';
 
 class AthletesScreen extends StatefulWidget {
   final AthleteRepository repository;
+  final CategoryRepository categoryRepository;
 
-  const AthletesScreen({super.key, required this.repository});
+  const AthletesScreen({
+    super.key,
+    required this.repository,
+    required this.categoryRepository,
+  });
 
   @override
   State<AthletesScreen> createState() => _AthletesScreenState();
@@ -19,7 +26,10 @@ class _AthletesScreenState extends State<AthletesScreen> {
   Future<void> _openForm({Athlete? existing}) async {
     final result = await showDialog<AthleteFormResult>(
       context: context,
-      builder: (_) => AthleteFormDialog(existing: existing),
+      builder: (_) => AthleteFormDialog(
+        existing: existing,
+        categories: widget.categoryRepository.categories,
+      ),
     );
     if (result == null) return;
     if (existing == null) {
@@ -88,7 +98,8 @@ class _AthletesScreenState extends State<AthletesScreen> {
                   padding: EdgeInsetsDirectional.only(start: 8),
                   child: Icon(FluentIcons.search, size: 16),
                 ),
-                onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _query = v.trim().toLowerCase()),
               ),
             ),
             FilledButton(
@@ -100,7 +111,9 @@ class _AthletesScreenState extends State<AthletesScreen> {
                   children: [
                     Icon(FluentIcons.add, size: 16),
                     SizedBox(width: 8),
-                    Text('Добавить'),
+                    Flexible(
+                      child: Text('Добавить', overflow: TextOverflow.ellipsis),
+                    ),
                   ],
                 ),
               ),
@@ -109,16 +122,27 @@ class _AthletesScreenState extends State<AthletesScreen> {
         ),
       ),
       content: ListenableBuilder(
-        listenable: widget.repository,
+        listenable: Listenable.merge([
+          widget.repository,
+          widget.categoryRepository,
+        ]),
         builder: (context, _) {
-          final athletes = widget.repository.athletes
-              .where((a) => _query.isEmpty || a.fullName.toLowerCase().contains(_query))
-              .toList()
-            ..sort((a, b) => a.fullName.compareTo(b.fullName));
+          final athletes =
+              widget.repository.athletes
+                  .where(
+                    (a) =>
+                        _query.isEmpty ||
+                        a.fullName.toLowerCase().contains(_query),
+                  )
+                  .toList()
+                ..sort((a, b) => a.fullName.compareTo(b.fullName));
 
           if (athletes.isEmpty) {
             return const Center(
-              child: Text('Список участников пуст', style: TextStyle(fontSize: 14)),
+              child: Text(
+                'Список участников пуст',
+                style: TextStyle(fontSize: 14),
+              ),
             );
           }
 
@@ -126,6 +150,7 @@ class _AthletesScreenState extends State<AthletesScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _AthletesTable(
               athletes: athletes,
+              categories: widget.categoryRepository.categories,
               onEdit: (a) => _openForm(existing: a),
               onDelete: _confirmDelete,
             ),
@@ -138,11 +163,13 @@ class _AthletesScreenState extends State<AthletesScreen> {
 
 class _AthletesTable extends StatelessWidget {
   final List<Athlete> athletes;
+  final List<AgeCategoryDef> categories;
   final ValueChanged<Athlete> onEdit;
   final ValueChanged<Athlete> onDelete;
 
   const _AthletesTable({
     required this.athletes,
+    required this.categories,
     required this.onEdit,
     required this.onDelete,
   });
@@ -167,7 +194,11 @@ class _AthletesTable extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault)),
+            border: Border(
+              bottom: BorderSide(
+                color: theme.resources.dividerStrokeColorDefault,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -188,12 +219,17 @@ class _AthletesTable extends StatelessWidget {
         Expanded(
           child: ListView.separated(
             itemCount: athletes.length,
-            separatorBuilder: (_, _) =>
-                Divider(style: DividerThemeData(thickness: 1, horizontalMargin: EdgeInsets.zero)),
+            separatorBuilder: (_, _) => Divider(
+              style: DividerThemeData(
+                thickness: 1,
+                horizontalMargin: EdgeInsets.zero,
+              ),
+            ),
             itemBuilder: (context, index) {
               final athlete = athletes[index];
               return _AthleteRow(
                 athlete: athlete,
+                categories: categories,
                 columns: _columns,
                 onEdit: () => onEdit(athlete),
                 onDelete: () => onDelete(athlete),
@@ -223,12 +259,14 @@ class _Column {
 
 class _AthleteRow extends StatefulWidget {
   final Athlete athlete;
+  final List<AgeCategoryDef> categories;
   final List<_Column> columns;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _AthleteRow({
     required this.athlete,
+    required this.categories,
     required this.columns,
     required this.onEdit,
     required this.onDelete,
@@ -246,6 +284,14 @@ class _AthleteRowState extends State<_AthleteRow> {
     final theme = FluentTheme.of(context);
     final athlete = widget.athlete;
     final bodyStyle = theme.typography.body;
+    final category = resolveAgeCategoryFrom(
+      widget.categories,
+      athlete.birthYear,
+    );
+    final weightClass = category?.resolveWeightClass(
+      athlete.gender,
+      athlete.weightKg,
+    );
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -257,23 +303,35 @@ class _AthleteRowState extends State<_AthleteRow> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            _cellSlot(widget.columns[0], Text(athlete.fullName, style: bodyStyle)),
-            _cellSlot(widget.columns[1], Text('${athlete.birthYear}', style: bodyStyle)),
-            _cellSlot(widget.columns[2], Text(athlete.gender.label, style: bodyStyle)),
-            _cellSlot(widget.columns[3], Text(_formatWeight(athlete.weightKg), style: bodyStyle)),
+            _cellSlot(
+              widget.columns[0],
+              Text(athlete.fullName, style: bodyStyle),
+            ),
+            _cellSlot(
+              widget.columns[1],
+              Text('${athlete.birthYear}', style: bodyStyle),
+            ),
+            _cellSlot(
+              widget.columns[2],
+              Text(athlete.gender.label, style: bodyStyle),
+            ),
+            _cellSlot(
+              widget.columns[3],
+              Text(_formatWeight(athlete.weightKg), style: bodyStyle),
+            ),
             _cellSlot(
               widget.columns[4],
               Text(
-                athlete.ageCategory?.label ?? 'не определена',
+                category?.label ?? 'не определена',
                 style: bodyStyle?.copyWith(
-                  color: athlete.ageCategory == null ? Colors.red : null,
+                  color: category == null ? Colors.red : null,
                 ),
               ),
             ),
             _cellSlot(
               widget.columns[5],
               Text(
-                athlete.weightClass != null ? 'до ${athlete.weightClass!.label}' : '—',
+                weightClass != null ? 'до ${weightClass.label}' : '—',
                 style: bodyStyle,
               ),
             ),

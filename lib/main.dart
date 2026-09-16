@@ -3,6 +3,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'screens/home_shell.dart';
 import 'services/athlete_repository.dart';
+import 'services/category_repository.dart';
 import 'services/tournament_repository.dart';
 import 'theme/app_theme.dart';
 
@@ -34,6 +35,7 @@ class TkRandomApp extends StatefulWidget {
 
 class _TkRandomAppState extends State<TkRandomApp> {
   final athleteRepository = AthleteRepository();
+  final categoryRepository = CategoryRepository();
   final tournamentRepository = TournamentRepository();
   late final Future<void> _loading;
 
@@ -42,6 +44,7 @@ class _TkRandomAppState extends State<TkRandomApp> {
     super.initState();
     _loading = Future.wait([
       athleteRepository.load(),
+      categoryRepository.load(),
       tournamentRepository.load(),
     ]);
   }
@@ -58,12 +61,11 @@ class _TkRandomAppState extends State<TkRandomApp> {
         future: _loading,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const ScaffoldPage(
-              content: Center(child: ProgressRing()),
-            );
+            return const ScaffoldPage(content: Center(child: ProgressRing()));
           }
           return HomeShell(
             athleteRepository: athleteRepository,
+            categoryRepository: categoryRepository,
             tournamentRepository: tournamentRepository,
           );
         },
