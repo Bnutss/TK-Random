@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 import '../models/bracket.dart';
 
@@ -24,7 +24,7 @@ class BracketTreeView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -40,12 +40,11 @@ class BracketTreeView extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
                         _roundLabel(r),
-                        style: Theme.of(context).textTheme.titleSmall,
+                        style: FluentTheme.of(context).typography.bodyStrong,
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    for (final match in draw.rounds[r])
-                      _MatchCard(match: match),
+                    for (final match in draw.rounds[r]) _MatchCard(match: match),
                   ],
                 ),
               ),
@@ -65,17 +64,18 @@ class _MatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _SlotLine(slot: match.slotA),
-            const Divider(height: 14),
-            _SlotLine(slot: match.slotB),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SlotLine(slot: match.slotA),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 7),
+            child: Divider(size: double.infinity),
+          ),
+          _SlotLine(slot: match.slotB),
+        ],
       ),
     );
   }
@@ -88,28 +88,26 @@ class _SlotLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme = FluentTheme.of(context);
     if (slot.athlete != null) {
       return Text(
         slot.athlete!.fullName,
-        style: theme.textTheme.bodyMedium,
+        style: theme.typography.body,
         overflow: TextOverflow.ellipsis,
       );
     }
     if (slot.isBye) {
       return Text(
         'БАЙ',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.outline,
+        style: theme.typography.caption?.copyWith(
+          color: theme.resources.textFillColorSecondary,
           fontStyle: FontStyle.italic,
         ),
       );
     }
     return Text(
       'ожидается',
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.outline,
-      ),
+      style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorTertiary),
     );
   }
 }

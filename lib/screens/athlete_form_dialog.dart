@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart' show TextCapitalization;
 
 import '../models/age_category.dart';
 import '../models/athlete.dart';
@@ -67,37 +68,38 @@ class _AthleteFormDialogState extends State<AthleteFormDialog> {
         ? WeightClassTables.resolve(category, _gender, weight)
         : null;
 
-    return AlertDialog(
-      title: Text(
-        widget.existing == null ? 'Новый участник' : 'Изменить участника',
-      ),
-      content: SizedBox(
-        width: 420,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
+    return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 460),
+      title: Text(widget.existing == null ? 'Новый участник' : 'Изменить участника'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InfoLabel(
+                label: 'Ф.И. спортсмена',
+                child: TextFormBox(
+                  key: const Key('athlete_name_field'),
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Ф.И. спортсмена',
-                  ),
+                  placeholder: 'Например, Saliyev Xayotjon',
                   textCapitalization: TextCapitalization.words,
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Укажите имя' : null,
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: InfoLabel(
+                      label: 'Год рождения',
+                      child: TextFormBox(
+                        key: const Key('athlete_year_field'),
                         controller: _yearController,
-                        decoration: const InputDecoration(
-                          labelText: 'Год рождения',
-                        ),
+                        placeholder: '2011',
                         keyboardType: TextInputType.number,
                         onChanged: (_) => setState(() {}),
                         validator: (v) {
@@ -110,72 +112,66 @@ class _AthleteFormDialogState extends State<AthleteFormDialog> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InfoLabel(
+                      label: 'Вес, кг',
+                      child: TextFormBox(
+                        key: const Key('athlete_weight_field'),
                         controller: _weightController,
-                        decoration: const InputDecoration(labelText: 'Вес, кг'),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                        placeholder: '45.5',
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         onChanged: (_) => setState(() {}),
                         validator: (v) {
-                          final w = double.tryParse(
-                            (v ?? '').trim().replaceAll(',', '.'),
-                          );
+                          final w = double.tryParse((v ?? '').trim().replaceAll(',', '.'));
                           if (w == null || w <= 0) return 'Число';
                           return null;
                         },
                       ),
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              InfoLabel(
+                label: 'Пол',
+                child: ComboBox<Gender>(
+                  isExpanded: true,
+                  value: _gender,
+                  items: const [
+                    ComboBoxItem(value: Gender.male, child: Text('Мужской')),
+                    ComboBoxItem(value: Gender.female, child: Text('Женский')),
                   ],
+                  onChanged: (g) => setState(() => _gender = g ?? Gender.male),
                 ),
-                const SizedBox(height: 12),
-                SegmentedButton<Gender>(
-                  segments: const [
-                    ButtonSegment(value: Gender.male, label: Text('Муж.')),
-                    ButtonSegment(value: Gender.female, label: Text('Жен.')),
-                  ],
-                  selected: {_gender},
-                  onSelectionChanged: (s) => setState(() => _gender = s.first),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
+              ),
+              const SizedBox(height: 14),
+              InfoLabel(
+                label: 'Клуб / тренер (необязательно)',
+                child: TextFormBox(
                   controller: _clubController,
-                  decoration: const InputDecoration(
-                    labelText: 'Клуб / тренер (необязательно)',
-                  ),
+                  placeholder: 'Chirchiq Saliyev',
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          (category == null || weightClass == null)
-                              ? 'Заполните год рождения и вес'
-                              : 'Категория: ${category.label} · Весовая: до ${weightClass.label} кг',
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              const SizedBox(height: 16),
+              InfoBar(
+                title: const Text('Категория'),
+                content: Text(
+                  (category == null || weightClass == null)
+                      ? 'Заполните год рождения и вес'
+                      : '${category.label} · до ${weightClass.label} кг',
                 ),
-              ],
-            ),
+                severity: (category == null || weightClass == null)
+                    ? InfoBarSeverity.warning
+                    : InfoBarSeverity.info,
+              ),
+            ],
           ),
         ),
       ),
       actions: [
-        TextButton(
+        Button(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Отмена'),
         ),

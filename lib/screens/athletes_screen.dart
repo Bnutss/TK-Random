@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 import '../models/athlete.dart';
 import '../services/athlete_repository.dart';
@@ -46,15 +46,18 @@ class _AthletesScreenState extends State<AthletesScreen> {
   Future<void> _confirmDelete(Athlete athlete) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ContentDialog(
         title: const Text('Удалить участника?'),
         content: Text(athlete.fullName),
         actions: [
-          TextButton(
+          Button(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Отмена'),
           ),
           FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(Colors.red),
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Удалить'),
           ),
@@ -68,116 +71,245 @@ class _AthletesScreenState extends State<AthletesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return ScaffoldPage(
+      header: PageHeader(
         title: const Text('Участники'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: SizedBox(
-              width: 260,
-              child: TextField(
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Поиск по имени',
-                  isDense: true,
-                  border: OutlineInputBorder(),
+        commandBar: Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            SizedBox(
+              width: 220,
+              child: TextBox(
+                placeholder: 'Поиск по имени',
+                prefix: const Padding(
+                  padding: EdgeInsetsDirectional.only(start: 8),
+                  child: Icon(FluentIcons.search, size: 16),
                 ),
-                onChanged: (v) =>
-                    setState(() => _query = v.trim().toLowerCase()),
+                onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
               ),
             ),
-          ),
-        ],
+            FilledButton(
+              onPressed: () => _openForm(),
+              child: const Padding(
+                padding: EdgeInsetsDirectional.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(FluentIcons.add, size: 16),
+                    SizedBox(width: 8),
+                    Text('Добавить'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Добавить'),
-      ),
-      body: ListenableBuilder(
+      content: ListenableBuilder(
         listenable: widget.repository,
         builder: (context, _) {
-          final athletes =
-              widget.repository.athletes
-                  .where(
-                    (a) =>
-                        _query.isEmpty ||
-                        a.fullName.toLowerCase().contains(_query),
-                  )
-                  .toList()
-                ..sort((a, b) => a.fullName.compareTo(b.fullName));
+          final athletes = widget.repository.athletes
+              .where((a) => _query.isEmpty || a.fullName.toLowerCase().contains(_query))
+              .toList()
+            ..sort((a, b) => a.fullName.compareTo(b.fullName));
 
           if (athletes.isEmpty) {
-            return const Center(child: Text('Список участников пуст'));
+            return const Center(
+              child: Text('Список участников пуст', style: TextStyle(fontSize: 14)),
+            );
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Ф.И.')),
-                  DataColumn(label: Text('Год')),
-                  DataColumn(label: Text('Пол')),
-                  DataColumn(label: Text('Вес')),
-                  DataColumn(label: Text('Категория')),
-                  DataColumn(label: Text('Весовая')),
-                  DataColumn(label: Text('Клуб / тренер')),
-                  DataColumn(label: Text('')),
-                ],
-                rows: [
-                  for (final athlete in athletes)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(athlete.fullName)),
-                        DataCell(Text('${athlete.birthYear}')),
-                        DataCell(Text(athlete.gender.label)),
-                        DataCell(Text('${athlete.weightKg}')),
-                        DataCell(
-                          Text(
-                            athlete.ageCategory?.label ?? 'не определена',
-                            style: athlete.ageCategory == null
-                                ? TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  )
-                                : null,
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            athlete.weightClass != null
-                                ? 'до ${athlete.weightClass!.label}'
-                                : '—',
-                          ),
-                        ),
-                        DataCell(Text(athlete.club)),
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                tooltip: 'Изменить',
-                                onPressed: () => _openForm(existing: athlete),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                tooltip: 'Удалить',
-                                onPressed: () => _confirmDelete(athlete),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _AthletesTable(
+              athletes: athletes,
+              onEdit: (a) => _openForm(existing: a),
+              onDelete: _confirmDelete,
             ),
           );
         },
       ),
     );
   }
+}
+
+class _AthletesTable extends StatelessWidget {
+  final List<Athlete> athletes;
+  final ValueChanged<Athlete> onEdit;
+  final ValueChanged<Athlete> onDelete;
+
+  const _AthletesTable({
+    required this.athletes,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  static const _columns = [
+    _Column('Ф.И.', flex: 3),
+    _Column('Год', width: 64),
+    _Column('Пол', width: 56),
+    _Column('Вес', width: 64),
+    _Column('Категория', flex: 2),
+    _Column('Весовая', width: 96),
+    _Column('Клуб / тренер', flex: 2),
+    _Column('', width: 84),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault)),
+          ),
+          child: Row(
+            children: [
+              for (final column in _columns)
+                _cellSlot(
+                  column,
+                  Text(
+                    column.label,
+                    style: theme.typography.bodyStrong?.copyWith(
+                      color: theme.resources.textFillColorSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            itemCount: athletes.length,
+            separatorBuilder: (_, _) =>
+                Divider(style: DividerThemeData(thickness: 1, horizontalMargin: EdgeInsets.zero)),
+            itemBuilder: (context, index) {
+              final athlete = athletes[index];
+              return _AthleteRow(
+                athlete: athlete,
+                columns: _columns,
+                onEdit: () => onEdit(athlete),
+                onDelete: () => onDelete(athlete),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _cellSlot(_Column column, Widget child) {
+  if (column.width != null) {
+    return SizedBox(width: column.width, child: child);
+  }
+  return Expanded(flex: column.flex, child: child);
+}
+
+class _Column {
+  final String label;
+  final double? width;
+  final int flex;
+
+  const _Column(this.label, {this.width, this.flex = 1});
+}
+
+class _AthleteRow extends StatefulWidget {
+  final Athlete athlete;
+  final List<_Column> columns;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _AthleteRow({
+    required this.athlete,
+    required this.columns,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_AthleteRow> createState() => _AthleteRowState();
+}
+
+class _AthleteRowState extends State<_AthleteRow> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final athlete = widget.athlete;
+    final bodyStyle = theme.typography.body;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Container(
+        color: _hovering
+            ? theme.resources.subtleFillColorSecondary
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            _cellSlot(widget.columns[0], Text(athlete.fullName, style: bodyStyle)),
+            _cellSlot(widget.columns[1], Text('${athlete.birthYear}', style: bodyStyle)),
+            _cellSlot(widget.columns[2], Text(athlete.gender.label, style: bodyStyle)),
+            _cellSlot(widget.columns[3], Text(_formatWeight(athlete.weightKg), style: bodyStyle)),
+            _cellSlot(
+              widget.columns[4],
+              Text(
+                athlete.ageCategory?.label ?? 'не определена',
+                style: bodyStyle?.copyWith(
+                  color: athlete.ageCategory == null ? Colors.red : null,
+                ),
+              ),
+            ),
+            _cellSlot(
+              widget.columns[5],
+              Text(
+                athlete.weightClass != null ? 'до ${athlete.weightClass!.label}' : '—',
+                style: bodyStyle,
+              ),
+            ),
+            _cellSlot(
+              widget.columns[6],
+              Text(
+                athlete.club.isEmpty ? '—' : athlete.club,
+                style: bodyStyle,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _cellSlot(
+              widget.columns[7],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(FluentIcons.edit, size: 15),
+                    onPressed: widget.onEdit,
+                  ),
+                  IconButton(
+                    icon: const Icon(FluentIcons.delete, size: 15),
+                    onPressed: widget.onDelete,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatWeight(double weight) {
+  return weight == weight.roundToDouble()
+      ? weight.toStringAsFixed(0)
+      : weight.toStringAsFixed(1);
 }

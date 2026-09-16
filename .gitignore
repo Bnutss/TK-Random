@@ -49,3 +49,4 @@ app.*.map.json
 
 # Reference/sample tournament documents (contain personal data, not used by the app)
 /assets/files/
+macos/

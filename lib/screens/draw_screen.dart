@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 import '../models/athlete.dart';
 import '../models/bracket.dart';
@@ -53,8 +53,19 @@ class _DrawScreenState extends State<DrawScreen> {
       groups: _draws.values.toList(),
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Сохранено в историю')));
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Сохранено'),
+        content: const Text('Турнир сохранён в историю.'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Ок'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -66,61 +77,79 @@ class _DrawScreenState extends State<DrawScreen> {
         final unresolved = widget.athleteRepository.withUnresolvedCategory();
         final eligibleCount = groups.values.where((v) => v.length >= 2).length;
 
-        return Scaffold(
-          appBar: AppBar(
+        return ScaffoldPage(
+          header: PageHeader(
             title: const Text('Жеребьёвка'),
-            actions: [
-              TextButton.icon(
-                onPressed: eligibleCount == 0
-                    ? null
-                    : () => _generateAll(groups),
-                icon: const Icon(Icons.shuffle),
-                label: const Text('Сформировать все сетки'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _draws.isEmpty ? null : _saveToHistory,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Сохранить в историю'),
-              ),
-              const SizedBox(width: 16),
-            ],
+            commandBar: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Button(
+                  onPressed: eligibleCount == 0 ? null : () => _generateAll(groups),
+                  child: const Padding(
+                    padding: EdgeInsetsDirectional.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(FluentIcons.branch_fork2, size: 15),
+                        SizedBox(width: 8),
+                        Text('Сформировать все сетки'),
+                      ],
+                    ),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: _draws.isEmpty ? null : _saveToHistory,
+                  child: const Padding(
+                    padding: EdgeInsetsDirectional.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(FluentIcons.save, size: 15),
+                        SizedBox(width: 8),
+                        Text('Сохранить в историю'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          body: groups.isEmpty
-              ? const Center(
-                  child: Text('Нет участников с определённой категорией'),
-                )
+          content: groups.isEmpty
+              ? const Center(child: Text('Нет участников с определённой категорией'))
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
                     if (unresolved.isNotEmpty)
-                      Card(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            'Категория не определена (${unresolved.length}): '
-                            '${unresolved.map((a) => a.fullName).join(', ')}',
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: InfoBar(
+                          title: const Text('Категория не определена'),
+                          content: Text(unresolved.map((a) => a.fullName).join(', ')),
+                          severity: InfoBarSeverity.warning,
                         ),
                       ),
-                    const SizedBox(height: 8),
                     for (final entry in groups.entries)
-                      _GroupTile(
-                        athletes: entry.value,
-                        draw: _draws[entry.key],
-                        onGenerate: entry.value.length >= 2
-                            ? () => _generate(entry.key, entry.value)
-                            : null,
-                        onOpen: _draws[entry.key] == null
-                            ? null
-                            : () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => BracketViewScreen(
-                                    draw: _draws[entry.key]!,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _GroupExpander(
+                          athletes: entry.value,
+                          draw: _draws[entry.key],
+                          onGenerate: entry.value.length >= 2
+                              ? () => _generate(entry.key, entry.value)
+                              : null,
+                          onOpen: _draws[entry.key] == null
+                              ? null
+                              : () => Navigator.of(context).push(
+                                  FluentPageRoute(
+                                    builder: (_) => BracketViewScreen(
+                                      draw: _draws[entry.key]!,
+                                    ),
                                   ),
                                 ),
-                              ),
+                        ),
                       ),
                   ],
                 ),
@@ -130,13 +159,13 @@ class _DrawScreenState extends State<DrawScreen> {
   }
 }
 
-class _GroupTile extends StatelessWidget {
+class _GroupExpander extends StatelessWidget {
   final List<Athlete> athletes;
   final WeightGroupDraw? draw;
   final VoidCallback? onGenerate;
   final VoidCallback? onOpen;
 
-  const _GroupTile({
+  const _GroupExpander({
     required this.athletes,
     required this.draw,
     required this.onGenerate,
@@ -145,37 +174,48 @@ class _GroupTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     final key = draw?.key;
     final first = athletes.first;
-    final label =
-        key?.label ??
+    final label = key?.label ??
         '${first.ageCategory!.label} · ${first.gender.label} · до ${first.weightClass!.label} кг';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        title: Text(label),
-        subtitle: Text(
-          athletes.length < 2
-              ? 'Нет соперников (${athletes.length})'
-              : '${athletes.length} участников'
-                    '${draw != null ? ' · сетка сформирована' : ''}',
-        ),
-        trailing: Wrap(
-          spacing: 8,
-          children: [
-            if (onGenerate != null)
-              OutlinedButton(
-                onPressed: onGenerate,
-                child: Text(draw == null ? 'Жеребьёвка' : 'Заново'),
-              ),
-            if (onOpen != null)
-              FilledButton(
-                onPressed: onOpen,
-                child: const Text('Открыть сетку'),
-              ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.people,
+            size: 18,
+            color: theme.resources.textFillColorSecondary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: theme.typography.bodyStrong),
+                const SizedBox(height: 2),
+                Text(
+                  athletes.length < 2
+                      ? 'Нет соперников (${athletes.length})'
+                      : '${athletes.length} участников'
+                        '${draw != null ? ' · сетка сформирована' : ''}',
+                  style: theme.typography.caption,
+                ),
+              ],
+            ),
+          ),
+          if (onGenerate != null)
+            Button(
+              onPressed: onGenerate,
+              child: Text(draw == null ? 'Жеребьёвка' : 'Заново'),
+            ),
+          if (onOpen != null) ...[
+            const SizedBox(width: 8),
+            FilledButton(onPressed: onOpen, child: const Text('Открыть сетку')),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -207,43 +247,33 @@ class _SaveTournamentDialogState extends State<_SaveTournamentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 420),
       title: const Text('Сохранить турнир'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Название турнира'),
-            autofocus: true,
+          InfoLabel(
+            label: 'Название турнира',
+            child: TextBox(
+              controller: _nameController,
+              placeholder: 'Например, Чемпионат Ташкентской области',
+              autofocus: true,
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                'Дата: ${_date.day.toString().padLeft(2, '0')}.'
-                '${_date.month.toString().padLeft(2, '0')}.${_date.year}',
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _date,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) setState(() => _date = picked);
-                },
-                child: const Text('Изменить'),
-              ),
-            ],
+          const SizedBox(height: 14),
+          InfoLabel(
+            label: 'Дата проведения',
+            child: DatePicker(
+              selected: _date,
+              onChanged: (d) => setState(() => _date = d),
+            ),
           ),
         ],
       ),
       actions: [
-        TextButton(
+        Button(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Отмена'),
         ),

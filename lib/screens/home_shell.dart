@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 import '../services/athlete_repository.dart';
 import '../services/tournament_repository.dart';
@@ -25,44 +25,57 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final destinations = [
-      NavigationRailDestination(
-        icon: const Icon(Icons.groups_outlined),
-        selectedIcon: const Icon(Icons.groups),
-        label: const Text('Участники'),
-      ),
-      NavigationRailDestination(
-        icon: const Icon(Icons.shuffle_outlined),
-        selectedIcon: const Icon(Icons.shuffle),
-        label: const Text('Жеребьёвка'),
-      ),
-      NavigationRailDestination(
-        icon: const Icon(Icons.history_outlined),
-        selectedIcon: const Icon(Icons.history),
-        label: const Text('История'),
-      ),
-    ];
+    final theme = FluentTheme.of(context);
 
-    final pages = [
-      AthletesScreen(repository: widget.athleteRepository),
-      DrawScreen(
-        athleteRepository: widget.athleteRepository,
-        tournamentRepository: widget.tournamentRepository,
-      ),
-      HistoryScreen(repository: widget.tournamentRepository),
-    ];
-
-    return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            labelType: NavigationRailLabelType.all,
-            destinations: destinations,
+    return NavigationView(
+      pane: NavigationPane(
+        selected: _index,
+        onChanged: (i) => setState(() => _index = i),
+        size: const NavigationPaneSize(openWidth: 232),
+        header: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4, top: 8, bottom: 16),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'TK Random',
+                  style: theme.typography.bodyStrong,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const VerticalDivider(width: 1),
-          Expanded(child: pages[_index]),
+        ),
+        displayMode: PaneDisplayMode.expanded,
+        items: [
+          PaneItem(
+            icon: const Icon(FluentIcons.people),
+            title: const Text('Участники'),
+            body: AthletesScreen(repository: widget.athleteRepository),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.branch_fork2),
+            title: const Text('Жеребьёвка'),
+            body: DrawScreen(
+              athleteRepository: widget.athleteRepository,
+              tournamentRepository: widget.tournamentRepository,
+            ),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.history),
+            title: const Text('История'),
+            body: HistoryScreen(repository: widget.tournamentRepository),
+          ),
         ],
       ),
     );
