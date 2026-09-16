@@ -9,6 +9,7 @@ import '../services/category_repository.dart';
 import '../services/tournament_repository.dart';
 import '../services/update_service.dart';
 import 'athletes_screen.dart';
+import 'attendance_screen.dart';
 import 'categories_screen.dart';
 import 'draw_screen.dart';
 import 'history_screen.dart';
@@ -261,6 +262,11 @@ class _HomeShellState extends State<HomeShell> {
               repository: widget.athleteRepository,
               categoryRepository: widget.categoryRepository,
             ),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.check_list),
+            title: const Text('Посещения'),
+            body: const AttendanceScreen(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.branch_fork2),
