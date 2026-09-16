@@ -24,6 +24,7 @@ void main() {
       categoryRepository: CategoryRepository.seeded(defaultAgeCategories()),
       tournamentRepository: TournamentRepository(),
       checkForUpdate: checkForUpdate,
+      appVersion: '1.0.0',
       // A test that reaches the "Скачать" button without stubbing this
       // should fail loudly, not silently hit the real network.
       downloadUpdate:

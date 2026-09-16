@@ -21,6 +21,7 @@ void main() {
       categoryRepository: CategoryRepository.seeded(defaultAgeCategories()),
       tournamentRepository: TournamentRepository(),
       checkForUpdate: () async => null,
+      appVersion: '1.0.0',
     ),
   );
 
@@ -38,6 +39,10 @@ void main() {
     expect(find.text('Жеребьёвка').hitTestable(), findsOneWidget);
     expect(find.text('История').hitTestable(), findsOneWidget);
     expect(find.text('Категории').hitTestable(), findsOneWidget);
+
+    // The running app's own version is visible in the pane header, not
+    // buried in the exe's file properties.
+    expect(find.text('v1.0.0').hitTestable(), findsOneWidget);
   });
 
   testWidgets(

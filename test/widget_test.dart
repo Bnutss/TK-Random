@@ -17,6 +17,7 @@ void main() {
       categoryRepository: CategoryRepository.seeded(defaultAgeCategories()),
       tournamentRepository: TournamentRepository(),
       checkForUpdate: () async => null,
+      appVersion: '1.0.0',
     ),
   );
 

@@ -5,6 +5,7 @@ import 'screens/home_shell.dart';
 import 'services/athlete_repository.dart';
 import 'services/category_repository.dart';
 import 'services/tournament_repository.dart';
+import 'services/update_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -37,16 +38,32 @@ class _TkRandomAppState extends State<TkRandomApp> {
   final athleteRepository = AthleteRepository();
   final categoryRepository = CategoryRepository();
   final tournamentRepository = TournamentRepository();
-  late final Future<void> _loading;
+  late final Future<String> _loading;
 
   @override
   void initState() {
     super.initState();
-    _loading = Future.wait([
+    _loading = _load();
+  }
+
+  // Resolves the app's own version before HomeShell is ever built, so it
+  // can be passed down as a plain, already-known String rather than
+  // fetched and setState'd from inside HomeShell later — that pattern was
+  // tried first and reliably tripped a fluent_ui semantics-tree assertion
+  // whenever the resulting rebuild landed during the nav pane's collapsed-
+  // mode open/close animation (debug/test builds only; asserts are
+  // stripped from release builds, but not worth the fragility either way).
+  Future<String> _load() async {
+    await Future.wait([
       athleteRepository.load(),
       categoryRepository.load(),
       tournamentRepository.load(),
     ]);
+    try {
+      return await currentAppVersion();
+    } catch (_) {
+      return ''; // a blank version label isn't worth failing startup over
+    }
   }
 
   @override
@@ -57,7 +74,7 @@ class _TkRandomAppState extends State<TkRandomApp> {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: ThemeMode.system,
-      home: FutureBuilder<void>(
+      home: FutureBuilder<String>(
         future: _loading,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -67,6 +84,7 @@ class _TkRandomAppState extends State<TkRandomApp> {
             athleteRepository: athleteRepository,
             categoryRepository: categoryRepository,
             tournamentRepository: tournamentRepository,
+            appVersion: snapshot.data ?? '',
           );
         },
       ),

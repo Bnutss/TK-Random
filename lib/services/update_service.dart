@@ -122,6 +122,13 @@ class UpdateService {
   }
 }
 
+/// The running app's own version (e.g. "1.2.3"), read from the platform's
+/// package metadata. On Windows this comes from the exe's own embedded
+/// VERSIONINFO resource (see windows/runner/Runner.rc), which the Flutter
+/// build tooling stamps from this pubspec's `version:` field.
+Future<String> currentAppVersion() async =>
+    (await PackageInfo.fromPlatform()).version;
+
 /// Compares dotted numeric versions ("1.2.10" vs "1.2.9"); missing or
 /// non-numeric segments count as 0, so "1.2" and "1.2.0" are equal.
 bool isNewerVersion(String latest, String current) {

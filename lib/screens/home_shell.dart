@@ -18,6 +18,15 @@ class HomeShell extends StatefulWidget {
   final CategoryRepository categoryRepository;
   final TournamentRepository tournamentRepository;
 
+  /// The running app's own version (e.g. "1.3.0"), shown in the title bar
+  /// so it's visible without digging into the exe's file properties. Passed
+  /// in already resolved (see main.dart) rather than fetched here and
+  /// applied via setState — that was tried first and reliably tripped a
+  /// fluent_ui semantics-tree assertion whenever the resulting rebuild
+  /// landed during the nav pane's collapsed-mode open/close animation.
+  /// Empty until known.
+  final String appVersion;
+
   /// Checks whether a newer version is published. Defaults to a real
   /// GitHub Releases check; tests override it to avoid real network calls.
   final Future<UpdateInfo?> Function() checkForUpdate;
@@ -35,6 +44,7 @@ class HomeShell extends StatefulWidget {
     required this.athleteRepository,
     required this.categoryRepository,
     required this.tournamentRepository,
+    required this.appVersion,
     this.checkForUpdate = UpdateService.checkForUpdate,
     this.downloadUpdate = UpdateService.downloadUpdate,
   });
@@ -223,6 +233,26 @@ class _HomeShellState extends State<HomeShell> {
         onChanged: (i) => setState(() => _index = i),
         size: const NavigationPaneSize(openWidth: 232),
         displayMode: PaneDisplayMode.auto,
+        // Shown only in the open pane (hidden in compact/minimal, same as
+        // this app's old branding header used to be) — deliberately not in
+        // titleBar's title/subtitle: appending the version there made that
+        // text long enough to need eliding at narrow widths, and fluent_ui's
+        // title/subtitle overflow logic doesn't tolerate that combined with
+        // the pane's collapsed-mode open/close animation (trips a
+        // `parentDataDirty` semantics assertion — debug/test builds only).
+        header: widget.appVersion.isEmpty
+            ? null
+            : Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: 4,
+                  top: 8,
+                  bottom: 4,
+                ),
+                child: Text(
+                  'v${widget.appVersion}',
+                  style: FluentTheme.of(context).typography.caption,
+                ),
+              ),
         items: [
           PaneItem(
             icon: const Icon(FluentIcons.people),
