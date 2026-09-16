@@ -143,9 +143,11 @@ class PdfExportService {
     DateTime? tournamentDate,
   ) {
     final key = draw.key;
-    final dateLabel = tournamentDate != null
-        ? DateFormat('dd.MM.yyyy').format(tournamentDate)
-        : '—';
+    // A saved tournament carries its own date; a draw viewed/printed before
+    // being saved has none yet, so fall back to when the bracket itself was
+    // generated rather than leaving the field blank.
+    final dateLabel = DateFormat('dd.MM.yyyy')
+        .format(tournamentDate ?? draw.generatedAt);
     final cells = [
       ('Категория', key.ageCategoryLabel),
       ('Годы рождения', key.ageCategoryYearRangeLabel),
